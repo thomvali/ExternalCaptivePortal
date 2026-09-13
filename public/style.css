@@ -1,0 +1,124 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    background: linear-gradient(135deg, #f4f7fb, #e8eef7);
+
+    color: #172033;
+}
+
+.portal {
+    width: 90%;
+    max-width: 430px;
+
+    background: white;
+
+    border-radius: 20px;
+
+    padding: 42px 36px;
+
+    text-align: center;
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 72px;
+    height: 72px;
+
+    margin: 0 auto 24px;
+
+    border-radius: 18px;
+
+    background: #172033;
+    color: white;
+
+    font-weight: 700;
+}
+
+h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+}
+
+.subtitle {
+    color: #667085;
+    margin-bottom: 28px;
+}
+
+.network-info {
+    display: flex;
+    justify-content: space-between;
+
+    padding: 16px;
+
+    background: #f5f7fa;
+
+    border-radius: 12px;
+
+    margin-bottom: 24px;
+}
+
+.network-info span {
+    color: #667085;
+}
+
+.terms {
+    font-size: 13px;
+
+    line-height: 1.6;
+
+    color: #667085;
+
+    margin-bottom: 24px;
+}
+
+button {
+    width: 100%;
+
+    border: none;
+    border-radius: 12px;
+
+    padding: 16px;
+
+    background: #172033;
+
+    color: white;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: translateY(-1px);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+#status {
+    min-height: 20px;
+    margin-top: 18px;
+    font-size: 14px;
+}
