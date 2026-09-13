@@ -6,15 +6,11 @@
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Guest Voucher Administration</title>
 
     <style>
-
         body {
             font-family:
                 -apple-system,
@@ -44,8 +40,7 @@
             margin-bottom: 30px;
 
             box-shadow:
-                0 5px 20px
-                rgba(0,0,0,.08);
+                0 5px 20px rgba(0, 0, 0, .08);
         }
 
         input {
@@ -122,6 +117,33 @@
             margin-top: 20px;
         }
 
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-button {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .revoke-button {
+            background: #b26a00;
+        }
+
+        .delete-button {
+            background: #b42318;
+        }
+
+        .action-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .revoked {
+            color: #b42318;
+            font-weight: 600;
+        }
     </style>
 
 </head>
@@ -129,307 +151,508 @@
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <h1>Guest Voucher Administration</h1>
-
-
-    <div class="card">
-
-        <h2>Create Voucher</h2>
-
-        <form id="voucherForm">
-
-            <label>
-                Guest Full Name
-            </label>
-
-            <input
-                id="fullName"
-                type="text"
-                placeholder="John Smith"
-                required
-            >
+        <h1>Guest Voucher Administration</h1>
 
 
-            <label>
-                Access Expiration
-            </label>
+        <div class="card">
 
-            <input
-                id="expiresAt"
-                type="datetime-local"
-                required
-            >
+            <h2>Create Voucher</h2>
 
+            <form id="voucherForm">
 
-            <button type="submit">
-                Generate Voucher
-            </button>
+                <label>
+                    Guest Full Name
+                </label>
 
-        </form>
+                <input id="fullName" type="text" placeholder="John Smith" required>
 
 
-        <div id="createdVoucher"></div>
+                <label>
+                    Access Expiration
+                </label>
 
-        <div id="createdName"></div>
-
-    </div>
+                <input id="expiresAt" type="datetime-local" required>
 
 
-    <div class="card">
+                <button type="submit">
+                    Generate Voucher
+                </button>
 
-        <h2>Vouchers</h2>
+            </form>
 
-        <table>
 
-            <thead>
+            <div id="createdVoucher"></div>
 
-                <tr>
+            <div id="createdName"></div>
 
-                    <th>Code</th>
-                    <th>Name</th>
-                    <th>Expires</th>
-                    <th>Status</th>
-                    <th>Device</th>
+        </div>
 
-                </tr>
 
-            </thead>
+        <div class="card">
 
-            <tbody id="voucherList"></tbody>
+            <h2>Vouchers</h2>
 
-        </table>
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                        <th>Device</th>
+                        <th>Actions</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="voucherList"></tbody>
+
+            </table>
+
+        </div>
 
     </div>
 
-</div>
 
+    <script>
 
-<script>
-
-const form =
-    document.getElementById(
-        "voucherForm"
-    );
-
-
-form.addEventListener(
-    "submit",
-
-    async event => {
-
-        event.preventDefault();
-
-        const fullName =
+        const form =
             document.getElementById(
-                "fullName"
-            ).value;
-
-        const localExpiration =
-            document.getElementById(
-                "expiresAt"
-            ).value;
-
-
-        const expiration =
-            new Date(
-                localExpiration
+                "voucherForm"
             );
 
 
-        const response =
-            await fetch(
-                "/api/admin/vouchers",
-                {
-                    method: "POST",
+        form.addEventListener(
+            "submit",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+            async event => {
 
-                    body:
-                        JSON.stringify({
-                            fullName,
+                event.preventDefault();
 
-                            expiresAt:
-                                expiration
-                                    .toISOString()
-                        })
+                const fullName =
+                    document.getElementById(
+                        "fullName"
+                    ).value;
+
+                const localExpiration =
+                    document.getElementById(
+                        "expiresAt"
+                    ).value;
+
+
+                const expiration =
+                    new Date(
+                        localExpiration
+                    );
+
+
+                const response =
+                    await fetch(
+                        "/api/admin/vouchers",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    fullName,
+
+                                    expiresAt:
+                                        expiration
+                                            .toISOString()
+                                })
+                        }
+                    );
+
+
+                const result =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        result.error ||
+                        "Unable to create voucher."
+                    );
+
+                    return;
                 }
-            );
 
 
-        const result =
-            await response.json();
+                document.getElementById(
+                    "createdVoucher"
+                ).textContent =
+                    result.code;
 
 
-        if (!response.ok) {
-
-            alert(
-                result.error ||
-                "Unable to create voucher."
-            );
-
-            return;
-        }
+                document.getElementById(
+                    "createdName"
+                ).textContent =
+                    `Created for ${result.fullName}`;
 
 
-        document.getElementById(
-            "createdVoucher"
-        ).textContent =
-            result.code;
+                form.reset();
 
-
-        document.getElementById(
-            "createdName"
-        ).textContent =
-            `Created for ${result.fullName}`;
-
-
-        form.reset();
-
-        loadVouchers();
-    }
-);
-
-
-async function loadVouchers() {
-
-    const response =
-        await fetch(
-            "/api/admin/vouchers"
+                loadVouchers();
+            }
         );
 
 
-    if (!response.ok) {
-        return;
-    }
+        async function loadVouchers() {
+
+            const response =
+                await fetch(
+                    "/api/admin/vouchers"
+                );
 
 
-    const vouchers =
-        await response.json();
+            if (!response.ok) {
+                return;
+            }
 
 
-    const tbody =
-        document.getElementById(
-            "voucherList"
-        );
+            const vouchers =
+                await response.json();
 
 
-    tbody.innerHTML = "";
+            const tbody =
+                document.getElementById(
+                    "voucherList"
+                );
 
 
-    for (const voucher of vouchers) {
-
-        const row =
-            document.createElement(
-                "tr"
-            );
+            tbody.innerHTML = "";
 
 
-        let status;
-        let statusClass;
+            for (const voucher of vouchers) {
+
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
 
 
-        if (voucher.used_at) {
+                let status;
+                let statusClass;
 
-            status = "Used";
-            statusClass = "used";
 
+                const expired =
+                    new Date(
+                        voucher.expires_at
+                    ).getTime()
+                    <= Date.now();
+
+
+                if (voucher.revoked_at) {
+
+                    status = "Revoked";
+                    statusClass = "revoked";
+
+                }
+
+                else if (expired) {
+
+                    status = "Expired";
+                    statusClass = "expired";
+
+                }
+
+                else if (voucher.used_at) {
+
+                    status = "Active";
+                    statusClass = "active";
+
+                }
+
+                else {
+
+                    status = "Unused";
+                    statusClass = "used";
+
+                }
+
+
+                const code =
+                    document.createElement(
+                        "td"
+                    );
+
+                code.className =
+                    "voucher";
+
+                code.textContent =
+                    voucher.code;
+
+
+                const name =
+                    document.createElement(
+                        "td"
+                    );
+
+                name.textContent =
+                    voucher.full_name;
+
+
+                const expiration =
+                    document.createElement(
+                        "td"
+                    );
+
+                expiration.textContent =
+                    new Date(
+                        voucher.expires_at
+                    ).toLocaleString();
+
+
+                const statusCell =
+                    document.createElement(
+                        "td"
+                    );
+
+                statusCell.className =
+                    statusClass;
+
+                statusCell.textContent =
+                    status;
+
+
+                const device =
+                    document.createElement(
+                        "td"
+                    );
+
+                device.textContent =
+                    voucher.used_by_mac || "—";
+
+                const actions =
+                    document.createElement(
+                        "td"
+                    );
+
+                actions.className =
+                    "actions";
+
+
+                // ============================
+                // REVOKE BUTTON
+                // ============================
+
+                const revokeButton =
+                    document.createElement(
+                        "button"
+                    );
+
+                revokeButton.textContent =
+                    "Revoke";
+
+                revokeButton.className =
+                    "action-button revoke-button";
+
+
+                const canRevoke =
+                    voucher.used_at &&
+                    !voucher.revoked_at &&
+                    !expired;
+
+
+                revokeButton.disabled =
+                    !canRevoke;
+
+
+                revokeButton.addEventListener(
+                    "click",
+
+                    () => {
+
+                        revokeVoucher(
+                            voucher.id,
+                            voucher.code,
+                            voucher.full_name
+                        );
+                    }
+                );
+
+
+                // ============================
+                // DELETE BUTTON
+                // ============================
+
+                const deleteButton =
+                    document.createElement(
+                        "button"
+                    );
+
+                deleteButton.textContent =
+                    "Delete";
+
+                deleteButton.className =
+                    "action-button delete-button";
+
+
+                deleteButton.addEventListener(
+                    "click",
+
+                    () => {
+
+                        deleteVoucher(
+                            voucher.id,
+                            voucher.code,
+                            voucher.full_name
+                        );
+                    }
+                );
+
+
+                actions.append(
+                    revokeButton,
+                    deleteButton
+                );
+
+                row.append(
+                    code,
+                    name,
+                    expiration,
+                    statusCell,
+                    device,
+                    actions
+                );
+
+
+                tbody.appendChild(row);
+            }
         }
 
-        else if (
-            new Date(
-                voucher.expires_at
-            ).getTime()
-            <= Date.now()
+        async function revokeVoucher(
+            id,
+            code,
+            fullName
         ) {
 
-            status = "Expired";
-            statusClass = "expired";
+            const confirmed =
+                confirm(
+                    `Revoke guest access?\n\n` +
+                    `${fullName}\n` +
+                    `${code}\n\n` +
+                    `Their Internet access will be removed immediately.`
+                );
 
+
+            if (!confirmed) {
+                return;
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/admin/vouchers/${id}/revoke`,
+                        {
+                            method: "POST"
+                        }
+                    );
+
+
+                const result =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        result.error ||
+                        "Unable to revoke voucher."
+                    );
+                }
+
+
+                alert(
+                    `Access revoked for ${fullName}.`
+                );
+
+
+                await loadVouchers();
+
+            }
+
+            catch (error) {
+
+                alert(
+                    error.message
+                );
+            }
         }
 
-        else {
-
-            status = "Unused";
-            statusClass = "active";
-
-        }
 
 
-        const code =
-            document.createElement(
-                "td"
-            );
-
-        code.className =
-            "voucher";
-
-        code.textContent =
-            voucher.code;
-
-
-        const name =
-            document.createElement(
-                "td"
-            );
-
-        name.textContent =
-            voucher.full_name;
-
-
-        const expiration =
-            document.createElement(
-                "td"
-            );
-
-        expiration.textContent =
-            new Date(
-                voucher.expires_at
-            ).toLocaleString();
-
-
-        const statusCell =
-            document.createElement(
-                "td"
-            );
-
-        statusCell.className =
-            statusClass;
-
-        statusCell.textContent =
-            status;
-
-
-        const device =
-            document.createElement(
-                "td"
-            );
-
-        device.textContent =
-            voucher.used_by_mac || "—";
-
-
-        row.append(
+        async function deleteVoucher(
+            id,
             code,
-            name,
-            expiration,
-            statusCell,
-            device
-        );
+            fullName
+        ) {
+
+            const confirmed =
+                confirm(
+                    `Permanently delete this voucher?\n\n` +
+                    `${fullName}\n` +
+                    `${code}\n\n` +
+                    `This cannot be undone.`
+                );
 
 
-        tbody.appendChild(row);
-    }
-}
+            if (!confirmed) {
+                return;
+            }
 
 
-loadVouchers();
+            try {
 
-</script>
+                const response =
+                    await fetch(
+                        `/api/admin/vouchers/${id}`,
+                        {
+                            method: "DELETE"
+                        }
+                    );
+
+
+                const result =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        result.error ||
+                        "Unable to delete voucher."
+                    );
+                }
+
+
+                await loadVouchers();
+
+            }
+
+            catch (error) {
+
+                alert(
+                    error.message
+                );
+            }
+        }
+
+        loadVouchers();
+
+    </script>
 
 </body>
 

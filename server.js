@@ -51,6 +51,44 @@ db.exec(`
     );
 `);
 
+function ensureColumn(table, column, definition) {
+
+    const columns =
+        db.prepare(
+            `PRAGMA table_info(${table})`
+        ).all();
+
+    const exists =
+        columns.some(
+            item => item.name === column
+        );
+
+    if (!exists) {
+
+        console.log(
+            `Adding database column: ${column}`
+        );
+
+        db.exec(
+            `ALTER TABLE ${table}
+             ADD COLUMN ${column} ${definition}`
+        );
+    }
+}
+
+
+ensureColumn(
+    "vouchers",
+    "used_client_id",
+    "TEXT"
+);
+
+ensureColumn(
+    "vouchers",
+    "revoked_at",
+    "TEXT"
+);
+
 
 // ======================================================
 // UNIFI API
@@ -421,7 +459,9 @@ app.get(
                     expires_at,
                     created_at,
                     used_at,
-                    used_by_mac
+                    used_by_mac,
+                    used_client_id,
+                    revoked_at
 
                 FROM vouchers
 
@@ -752,12 +792,15 @@ app.post(
                 SET
                     used_at = ?,
                     used_by_mac = ?,
+                    used_client_id = ?,
+                    revoked_at = NULL,
                     redeeming_at = NULL
 
                 WHERE code = ?
             `).run(
                 usedAt,
                 mac,
+                client.id,
                 code
             );
 
@@ -841,6 +884,255 @@ app.post(
     }
 );
 
+// ======================================================
+// ADMIN - REVOKE VOUCHER ACCESS
+// ======================================================
+
+app.post(
+    "/api/admin/vouchers/:id/revoke",
+    requireAdminMAC,
+
+    async (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+            if (!Number.isInteger(id)) {
+
+                return res.status(400).json({
+                    error:
+                        "Invalid voucher ID."
+                });
+            }
+
+
+            const voucher =
+                db.prepare(`
+                    SELECT *
+                    FROM vouchers
+                    WHERE id = ?
+                `).get(id);
+
+
+            if (!voucher) {
+
+                return res.status(404).json({
+                    error:
+                        "Voucher not found."
+                });
+            }
+
+
+            if (!voucher.used_at) {
+
+                return res.status(400).json({
+                    error:
+                        "This voucher has never been redeemed."
+                });
+            }
+
+
+            if (voucher.revoked_at) {
+
+                return res.status(400).json({
+                    error:
+                        "This voucher has already been revoked."
+                });
+            }
+
+
+            let clientId =
+                voucher.used_client_id;
+
+
+            // Support vouchers redeemed before we started
+            // saving the UniFi client ID.
+
+            if (
+                !clientId &&
+                voucher.used_by_mac
+            ) {
+
+                const client =
+                    await getClientByMAC(
+                        normalizeMAC(
+                            voucher.used_by_mac
+                        )
+                    );
+
+                if (client) {
+                    clientId = client.id;
+                }
+            }
+
+
+            if (!clientId) {
+
+                return res.status(404).json({
+                    error:
+                        "Unable to find the UniFi client associated with this voucher."
+                });
+            }
+
+
+            console.log(
+                `Revoking guest access for ${voucher.full_name}`
+            );
+
+            console.log(
+                `Client ID: ${clientId}`
+            );
+
+
+            await unifi.post(
+                `/sites/${SITE_ID}/clients/${clientId}/actions`,
+                {
+                    action:
+                        "UNAUTHORIZE_GUEST_ACCESS"
+                }
+            );
+
+
+            const revokedAt =
+                new Date().toISOString();
+
+
+            db.prepare(`
+                UPDATE vouchers
+
+                SET revoked_at = ?
+
+                WHERE id = ?
+            `).run(
+                revokedAt,
+                id
+            );
+
+
+            console.log(
+                `Voucher ${voucher.code} revoked successfully.`
+            );
+
+
+            res.json({
+                success: true,
+                revokedAt
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Revoke error:",
+                error.response?.data ||
+                error.message
+            );
+
+
+            res.status(500).json({
+                error:
+                    error.response?.data?.message ||
+                    error.message ||
+                    "Unable to revoke guest access."
+            });
+        }
+    }
+);
+
+// ======================================================
+// ADMIN - DELETE VOUCHER
+// ======================================================
+
+app.delete(
+    "/api/admin/vouchers/:id",
+    requireAdminMAC,
+
+    (req, res) => {
+
+        try {
+
+            const id =
+                Number(req.params.id);
+
+
+            if (!Number.isInteger(id)) {
+
+                return res.status(400).json({
+                    error:
+                        "Invalid voucher ID."
+                });
+            }
+
+
+            const voucher =
+                db.prepare(`
+                    SELECT *
+                    FROM vouchers
+                    WHERE id = ?
+                `).get(id);
+
+
+            if (!voucher) {
+
+                return res.status(404).json({
+                    error:
+                        "Voucher not found."
+                });
+            }
+
+
+            const stillActive =
+                voucher.used_at &&
+                !voucher.revoked_at &&
+                new Date(
+                    voucher.expires_at
+                ).getTime() > Date.now();
+
+
+            if (stillActive) {
+
+                return res.status(409).json({
+                    error:
+                        "This voucher still has active guest access. Revoke it before deleting it."
+                });
+            }
+
+
+            db.prepare(`
+                DELETE FROM vouchers
+                WHERE id = ?
+            `).run(id);
+
+
+            console.log(
+                `Deleted voucher ${voucher.code}`
+            );
+
+
+            res.json({
+                success: true
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete voucher error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+                error:
+                    "Unable to delete voucher."
+            });
+        }
+    }
+);
 
 // ======================================================
 // PUBLIC PORTAL
