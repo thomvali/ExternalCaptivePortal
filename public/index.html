@@ -1,100 +1,480 @@
 <!DOCTYPE html>
+
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
 
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
 
-        <title>Guest WiFi</title>
+    <meta charset="UTF-8">
 
-        <link rel="stylesheet" href="/style.css">
-    </head>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <body>
-        <div class="portal">
-            <h1>Welcome</h1>
+    <title>Guest WiFi</title>
 
-            <p class="subtitle">
-                Connect to our complimentary guest WiFi.
-            </p>
+    <style>
 
-            <div class="network-info">
-                <span>Network</span>
-                <strong id="ssid">Guest WiFi</strong>
-            </div>
+        * {
+            box-sizing: border-box;
+        }
 
-            <p class="terms">
-                By connecting to this network, you agree to use the Internet responsibly and accept our guest network terms of service.
-            </p>
+        body {
+            margin: 0;
 
-            <button id="connectButton">
-                Accept & Continue
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: #f4f5f7;
+        }
+
+        .portal {
+            width: 90%;
+            max-width: 420px;
+
+            background: white;
+
+            padding: 38px;
+
+            border-radius: 18px;
+
+            text-align: center;
+
+            box-shadow:
+                0 15px 40px
+                rgba(0,0,0,.12);
+        }
+
+        input {
+            width: 100%;
+
+            padding: 16px;
+
+            font-size: 22px;
+
+            text-align: center;
+
+            text-transform: uppercase;
+
+            font-family: monospace;
+
+            letter-spacing: 2px;
+
+            border:
+                1px solid #ccc;
+
+            border-radius: 10px;
+
+            margin: 20px 0;
+        }
+
+        button {
+            width: 100%;
+
+            padding: 16px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #202124;
+            color: white;
+
+            font-size: 16px;
+
+            cursor: pointer;
+        }
+
+        #error {
+            color: red;
+
+            margin-top: 15px;
+        }
+
+        #success {
+            display: none;
+        }
+
+        #countdown {
+            font-weight: bold;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="portal">
+
+
+    <div id="login">
+
+
+        <h1>Guest WiFi</h1>
+
+        <p>
+            Enter your guest access voucher
+            to connect to the Internet.
+        </p>
+
+
+        <form id="voucherForm">
+
+            <input
+                id="voucher"
+                type="text"
+                maxlength="9"
+                placeholder="XXXX-XXXX"
+                autocomplete="off"
+                required
+            >
+
+
+            <button
+                id="connectButton"
+                type="submit"
+            >
+                Connect
             </button>
 
-            <p id="status"></p>
-        </div>
+        </form>
 
-        <script>
-            const params = new URLSearchParams(window.location.search)
 
-            const mac = params.get("id");
-            const ssid = params.get("ssid");
-            const returnUrl = params.get("url");
+        <div id="error"></div>
 
-            const button = document.getElementById("connectButton")
-            const status = document.getElementById("status");
 
-            if (ssid) {
-                document.getElementById("ssid").textContent = ssid;
-            }
+    </div>
+
+
+    <div id="success">
+
+
+        <h2 id="welcome"></h2>
+
+
+        <p>
+            Your access will expire in
+        </p>
+
+
+        <p id="countdown"></p>
+
+
+        <p>
+            Connecting you now...
+        </p>
+
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+const params =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const mac =
+    params.get("id");
+
+
+const returnUrl =
+    params.get("url");
+
+
+const voucherInput =
+    document.getElementById(
+        "voucher"
+    );
+
+
+const button =
+    document.getElementById(
+        "connectButton"
+    );
+
+
+const error =
+    document.getElementById(
+        "error"
+    );
+
+
+// Automatically format XXXX-XXXX
+
+voucherInput.addEventListener(
+    "input",
+
+    () => {
+
+        let value =
+            voucherInput.value
+                .toUpperCase()
+                .replace(
+                    /[^A-Z0-9]/g,
+                    ""
+                )
+                .slice(
+                    0,
+                    8
+                );
+
+
+        if (value.length > 4) {
+
+            value =
+                value.substring(0,4) +
+                "-" +
+                value.substring(4);
+
+        }
+
+
+        voucherInput.value =
+            value;
+    }
+);
+
+
+// Submit voucher
+
+document
+    .getElementById(
+        "voucherForm"
+    )
+    .addEventListener(
+        "submit",
+
+        async event => {
+
+            event.preventDefault();
+
+
+            error.textContent =
+                "";
+
 
             if (!mac) {
-                status.textContent = "Unable to identify this device.";
 
-                button.disabled = true;
+                error.textContent =
+                    "Unable to identify this device.";
+
+                return;
             }
 
-            button.addEventListener("click", async () => {
-                button.disabled = true;
 
-                button.textContent = "Connecting...";
+            button.disabled =
+                true;
 
-                status.textContent = "";
+            button.textContent =
+                "Checking Voucher...";
 
-                try {
-                    const response = await fetch("/authorize", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            mac: mac,
-                            returnUrl: returnUrl
-                        })
-                    });
 
-                    const result = await response.json();
+            try {
 
-                    if (!response.ok) {
-                        throw new Error(result.error || "Authorization failed.");
-                    }
+                const response =
+                    await fetch(
+                        "/api/redeem",
+                        {
+                            method:
+                                "POST",
 
-                    button.textContent = "Connected ✓";
-                    status.textContent = "You're connected to the Internet.";
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
 
-                    if (result.redirect) {
-                        setTimeout(() => {
-                            window.location.href = result.redirect;
-                        }, 1000);
-                    }
-                } catch (error) {
-                    console.error(error);
+                            body:
+                                JSON.stringify({
+                                    code:
+                                        voucherInput.value,
 
-                    status.textContent = error.message;
-                    button.disabled = false;
-                    button.textContent = "Try Again";
+                                    mac,
+
+                                    returnUrl
+                                })
+                        }
+                    );
+
+
+                const result =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        result.error
+                    );
                 }
-            });
-        </script>
-    </body>
+
+
+                showSuccess(
+                    result
+                );
+
+            }
+
+            catch (err) {
+
+                error.textContent =
+                    err.message;
+
+
+                button.disabled =
+                    false;
+
+
+                button.textContent =
+                    "Connect";
+            }
+        }
+    );
+
+
+// Successful login
+
+function showSuccess(result) {
+
+    document.getElementById(
+        "login"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "success"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "welcome"
+    ).textContent =
+        `Welcome, ${result.fullName}.`;
+
+
+    const expiration =
+        new Date(
+            result.expiresAt
+        );
+
+
+    function updateCountdown() {
+
+        let remaining =
+            expiration.getTime()
+            - Date.now();
+
+
+        if (remaining < 0) {
+            remaining = 0;
+        }
+
+
+        const days =
+            Math.floor(
+                remaining /
+                86400000
+            );
+
+
+        remaining %=
+            86400000;
+
+
+        const hours =
+            Math.floor(
+                remaining /
+                3600000
+            );
+
+
+        remaining %=
+            3600000;
+
+
+        const minutes =
+            Math.floor(
+                remaining /
+                60000
+            );
+
+
+        remaining %=
+            60000;
+
+
+        const seconds =
+            Math.floor(
+                remaining /
+                1000
+            );
+
+
+        document.getElementById(
+            "countdown"
+        ).textContent =
+
+            `${days}d, ` +
+            `${String(hours).padStart(2,"0")}h, ` +
+            `${String(minutes).padStart(2,"0")}m, ` +
+            `${String(seconds).padStart(2,"0")}s`;
+    }
+
+
+    updateCountdown();
+
+
+    setInterval(
+        updateCountdown,
+        1000
+    );
+
+
+    // Give them five seconds to see
+    // their welcome message.
+
+    setTimeout(
+        () => {
+
+            if (result.redirect) {
+
+                window.location.href =
+                    result.redirect;
+
+            } else {
+
+                window.location.href =
+                    "http://neverssl.com";
+            }
+
+        },
+
+        5000
+    );
+}
+
+</script>
+
+
+</body>
+
 </html>
