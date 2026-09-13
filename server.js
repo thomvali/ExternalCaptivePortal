@@ -424,6 +424,22 @@ app.get(
 // ======================================================
 
 app.get(
+    "/admin/print",
+    requireAdminMAC,
+
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "private",
+                "print.html"
+            )
+        );
+    }
+);
+
+app.get(
     "/admin",
     requireAdminMAC,
 

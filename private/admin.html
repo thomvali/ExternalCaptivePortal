@@ -155,6 +155,9 @@
 
         <h1>Guest Voucher Administration</h1>
 
+        <button onclick="window.open('/admin/print', '_blank')">
+            Print All Unused Vouchers
+        </button>
 
         <div class="card">
 
@@ -511,10 +514,35 @@
                     }
                 );
 
+                const printButton =
+                    document.createElement(
+                        "button"
+                    );
+
+                printButton.textContent =
+                    "Print";
+
+                printButton.className =
+                    "action-button";
+
+
+                printButton.addEventListener(
+                    "click",
+
+                    () => {
+
+                        window.open(
+                            `/admin/print?id=${voucher.id}`,
+                            "_blank"
+                        );
+                    }
+                );
+
 
                 actions.append(
                     revokeButton,
-                    deleteButton
+                    deleteButton,
+                    printButton
                 );
 
                 row.append(
